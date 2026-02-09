@@ -272,8 +272,8 @@ class VAEProspectivityModel(nn.Module):
             input_dim=checkpoint['input_dim'],
             latent_dim=checkpoint['latent_dim'],
             output_dim=checkpoint['output_dim'],
-            encoder_hidden_dims=checkpoint.get('encoder_hidden_dims'),
-            decoder_hidden_dims=checkpoint.get('decoder_hidden_dims')
+            encoder_hidden_dims=checkpoint.get('encoder_hidden_dims', [256, 128, 64]),
+            decoder_hidden_dims=checkpoint.get('decoder_hidden_dims', [64, 128, 256])
         )
         model.load_state_dict(checkpoint['model_state_dict'])
         return model

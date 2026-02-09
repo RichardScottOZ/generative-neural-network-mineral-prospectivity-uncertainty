@@ -151,24 +151,24 @@ class TestRiskAnalysisConfidenceInterval:
         uncertainties = np.array([0.1, 0.2, 0.05, 0.3, 0.15])
 
         result_high = TotalUncertainty.uncertainty_risk_analysis(
-            predictions, uncertainties, confidence_threshold=0.99
+            predictions, uncertainties, confidence_level=0.99
         )
         result_low = TotalUncertainty.uncertainty_risk_analysis(
-            predictions, uncertainties, confidence_threshold=0.5
+            predictions, uncertainties, confidence_level=0.5
         )
 
-        # Higher confidence threshold should use larger z-score, wider interval
+        # Higher confidence level should use larger z-score, wider interval
         # So the lower bounds should be lower with higher confidence
         assert (result_high['lower_confidence_bound'] <= result_low['lower_confidence_bound']).all()
 
     def test_lower_bound_uses_proper_z_score(self):
-        """Lower bound should use proper z-score from confidence_threshold."""
+        """Lower bound should use proper z-score from confidence_level."""
         from scipy import stats
         predictions = np.array([0.8])
         uncertainties = np.array([0.1])
 
         result = TotalUncertainty.uncertainty_risk_analysis(
-            predictions, uncertainties, confidence_threshold=0.95
+            predictions, uncertainties, confidence_level=0.95
         )
 
         expected_z = stats.norm.ppf((1 + 0.95) / 2)
@@ -176,6 +176,23 @@ class TestRiskAnalysisConfidenceInterval:
         np.testing.assert_almost_equal(
             result['lower_confidence_bound'][0], expected_lower, decimal=5
         )
+
+    def test_confidence_threshold_controls_recommendation(self):
+        """confidence_threshold should control the recommendation decision."""
+        predictions = np.array([0.7])
+        uncertainties = np.array([0.01])
+
+        result_low = TotalUncertainty.uncertainty_risk_analysis(
+            predictions, uncertainties, confidence_threshold=0.5
+        )
+        result_high = TotalUncertainty.uncertainty_risk_analysis(
+            predictions, uncertainties, confidence_threshold=0.9
+        )
+
+        # With low threshold, 0.7 should be recommended
+        assert result_low['recommend_exploration'][0] == True
+        # With high threshold, 0.7 should NOT be recommended
+        assert result_high['recommend_exploration'][0] == False
 
 
 class TestEnsembleSaveLoad:

@@ -180,7 +180,8 @@ class TotalUncertainty:
         uncertainties: np.ndarray,
         exploration_cost: float = 1.0,
         discovery_value: float = 100.0,
-        confidence_threshold: float = 0.9
+        confidence_threshold: float = 0.9,
+        confidence_level: float = 0.95
     ) -> Dict[str, np.ndarray]:
         """
         Perform risk-return analysis using uncertainty estimates.
@@ -193,7 +194,8 @@ class TotalUncertainty:
             uncertainties: Uncertainty estimates
             exploration_cost: Cost of exploring a location
             discovery_value: Value of a successful discovery
-            confidence_threshold: Confidence level for decisions
+            confidence_threshold: Minimum prediction threshold to recommend exploration
+            confidence_level: Confidence level for computing lower bound (e.g. 0.95 for 95% CI)
             
         Returns:
             Dictionary with risk-return metrics
@@ -215,9 +217,9 @@ class TotalUncertainty:
         # Confidence-based decision
         # Only recommend if lower confidence bound > threshold
         from scipy import stats as sp_stats
-        z_score = sp_stats.norm.ppf((1 + confidence_threshold) / 2)
+        z_score = sp_stats.norm.ppf((1 + confidence_level) / 2)
         lower_bound = predictions - z_score * uncertainties
-        recommend = lower_bound > 0.5
+        recommend = lower_bound > confidence_threshold
         
         return {
             'expected_value': expected_value,
