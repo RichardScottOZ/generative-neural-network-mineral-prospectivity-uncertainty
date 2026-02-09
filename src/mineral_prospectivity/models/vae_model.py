@@ -67,7 +67,7 @@ class Decoder(nn.Module):
     def forward(self, z: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         h = self.decoder(z)
         mean = torch.sigmoid(self.fc_mean(h))  # Prospectivity probability
-        logvar = self.fc_logvar(h)  # Aleatoric uncertainty
+        logvar = torch.clamp(self.fc_logvar(h), min=-10, max=10)  # Aleatoric uncertainty
         return mean, logvar
 
 
@@ -106,6 +106,8 @@ class VAEProspectivityModel(nn.Module):
         self.input_dim = input_dim
         self.latent_dim = latent_dim
         self.output_dim = output_dim
+        self.encoder_hidden_dims = encoder_hidden_dims
+        self.decoder_hidden_dims = decoder_hidden_dims
         
         self.encoder = Encoder(input_dim, encoder_hidden_dims, latent_dim)
         self.decoder = Decoder(latent_dim, decoder_hidden_dims, output_dim)
@@ -174,12 +176,14 @@ class VAEProspectivityModel(nn.Module):
             mu, logvar = self.encoder(x)
             
             predictions = []
+            aleatoric_vars = []
             for _ in range(num_samples):
                 # Sample from latent distribution
                 z = self.reparameterize(mu, logvar)
                 # Decode
                 pred_mean, pred_logvar = self.decoder(z)
                 predictions.append(pred_mean)
+                aleatoric_vars.append(torch.exp(pred_logvar))
             
             predictions = torch.stack(predictions)
             
@@ -187,9 +191,8 @@ class VAEProspectivityModel(nn.Module):
             pred_mean = predictions.mean(dim=0)
             pred_std = predictions.std(dim=0)
             
-            # Get aleatoric uncertainty from last forward pass
-            _, pred_logvar = self.decoder(z)
-            aleatoric_var = torch.exp(pred_logvar)
+            # Average aleatoric uncertainty across all MC samples
+            aleatoric_var = torch.stack(aleatoric_vars).mean(dim=0)
             
             # Epistemic uncertainty (variance of predictions)
             epistemic_var = pred_std ** 2
@@ -256,17 +259,21 @@ class VAEProspectivityModel(nn.Module):
             'model_state_dict': self.state_dict(),
             'input_dim': self.input_dim,
             'latent_dim': self.latent_dim,
-            'output_dim': self.output_dim
+            'output_dim': self.output_dim,
+            'encoder_hidden_dims': self.encoder_hidden_dims,
+            'decoder_hidden_dims': self.decoder_hidden_dims
         }, path)
     
     @classmethod
     def load_model(cls, path: str, device: str = 'cpu'):
         """Load model from file."""
-        checkpoint = torch.load(path, map_location=device)
+        checkpoint = torch.load(path, map_location=device, weights_only=False)
         model = cls(
             input_dim=checkpoint['input_dim'],
             latent_dim=checkpoint['latent_dim'],
-            output_dim=checkpoint['output_dim']
+            output_dim=checkpoint['output_dim'],
+            encoder_hidden_dims=checkpoint.get('encoder_hidden_dims'),
+            decoder_hidden_dims=checkpoint.get('decoder_hidden_dims')
         )
         model.load_state_dict(checkpoint['model_state_dict'])
         return model

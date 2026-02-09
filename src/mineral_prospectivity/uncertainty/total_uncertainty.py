@@ -213,9 +213,11 @@ class TotalUncertainty:
         risk_adjusted_return = net_expected_value - risk
         
         # Confidence-based decision
-        # Only recommend if prediction - uncertainty > threshold
-        lower_bound = predictions - 2 * uncertainties  # ~95% CI
-        recommend = lower_bound > confidence_threshold
+        # Only recommend if lower confidence bound > threshold
+        from scipy import stats as sp_stats
+        z_score = sp_stats.norm.ppf((1 + confidence_threshold) / 2)
+        lower_bound = predictions - z_score * uncertainties
+        recommend = lower_bound > 0.5
         
         return {
             'expected_value': expected_value,
