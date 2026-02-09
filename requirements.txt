@@ -1,0 +1,22 @@
+# Core dependencies
+torch>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# AWS
+boto3>=1.26.0
+botocore>=1.29.0
+
+# Data processing
+scikit-learn>=1.2.0
+pandas>=2.0.0
+
+# Configuration
+pyyaml>=6.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Optional: For visualization (not required for core functionality)
+matplotlib>=3.7.0
+seaborn>=0.12.0
