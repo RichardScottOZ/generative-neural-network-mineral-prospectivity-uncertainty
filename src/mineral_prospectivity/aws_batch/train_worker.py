@@ -123,6 +123,11 @@ def main():
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         logger.info(f"Using device: {device}")
         
+        # Set random seed BEFORE model initialization for reproducible weights
+        torch.manual_seed(args.model_index + config.get('base_seed', 42))
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(args.model_index + config.get('base_seed', 42))
+        
         model = VAEProspectivityModel(
             input_dim=config['input_dim'],
             latent_dim=config.get('latent_dim', 32),
@@ -132,11 +137,6 @@ def main():
         ).to(device)
         
         logger.info(f"Model initialized with {sum(p.numel() for p in model.parameters())} parameters")
-        
-        # Set random seed for reproducibility
-        torch.manual_seed(args.model_index + config.get('base_seed', 42))
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(args.model_index + config.get('base_seed', 42))
         
         # Train model
         logger.info("Starting training...")
@@ -171,6 +171,7 @@ def main():
                 loss = loss_dict['total_loss']
                 
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
                 
                 epoch_train_loss += loss.item()

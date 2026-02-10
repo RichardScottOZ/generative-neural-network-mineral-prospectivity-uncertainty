@@ -106,6 +106,7 @@ class EnsembleModel:
                 loss = loss_dict['total_loss']
                 
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
                 
                 epoch_train_loss += loss.item()
@@ -259,7 +260,7 @@ class EnsembleModel:
         load_dir = Path(directory)
         
         # Load metadata
-        metadata = torch.load(load_dir / "ensemble_metadata.pt", map_location=device)
+        metadata = torch.load(load_dir / "ensemble_metadata.pt", map_location=device, weights_only=False)
         
         # Create ensemble
         ensemble = cls(
